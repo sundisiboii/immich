@@ -40,7 +40,7 @@
                   inputType={SettingInputFieldType.TEXT}
                   label={i === 0 ? $t('url') : undefined}
                   description={i === 0 ? $t('admin.machine_learning_url_description') : undefined}
-                  bind:value={endpoint}
+                  bind:value={configToEdit.machineLearning.urls[i]}
                   required={i === 0}
                   disabled={disabled || !configToEdit.machineLearning.enabled}
                   isEdited={i === 0 && !isEqual(configToEdit.machineLearning.urls, config.machineLearning.urls)}
