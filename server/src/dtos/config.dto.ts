@@ -81,6 +81,20 @@ const AdminConfigMachineLearningModelSchema = AdminConfigMachineLearningTaskSche
   modelName: z.string().describe('Name of the model to use'),
 });
 
+const AdminConfigMachineLearningBasicAuthSchema = z
+  .object({
+    username: z.string().describe('Username'),
+    password: z.string().describe('Password'),
+  })
+  .meta({ id: 'AdminConfigMachineLearningBasicAuthDto' });
+
+const AdminConfigMachineLearningEndpointSchema = z
+  .object({
+    url: z.string().min(1).describe('ML service URL'),
+    auth: AdminConfigMachineLearningBasicAuthSchema.optional(),
+  })
+  .meta({ id: 'AdminConfigMachineLearningEndpointDto' });
+
 const AdminConfigGeneratedImageSchema = z
   .object({
     format: ImageFormatSchema,
@@ -207,7 +221,10 @@ const AdminConfigSchemaWithVisibility = z
     machineLearning: z
       .object({
         enabled: configBool.describe('Enabled').meta({ visibility: User }),
-        urls: z.array(z.string()).min(1).describe('ML service URLs'),
+        urls: z
+          .array(z.union([z.string(), AdminConfigMachineLearningEndpointSchema]))
+          .min(1)
+          .describe('ML service URLs'),
         availabilityChecks: z
           .object({
             enabled: configBool.describe('Enabled'),

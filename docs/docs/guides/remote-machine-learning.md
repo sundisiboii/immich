@@ -49,6 +49,18 @@ Version mismatches between both hosts may cause bugs and instability, so remembe
 5. Click _Add URL_
 6. Fill the new field with the URL to the remote machine learning container, e.g. `http://ip:port`
 
+## Authentication
+
+Each remote machine learning endpoint can optionally use HTTP Basic authentication. Select **Basic** for an endpoint and enter its username and password; Immich applies those credentials to both availability checks and prediction requests. Existing URL-only endpoints remain unauthenticated and continue to work as before.
+
+For example, an endpoint configured with URL `https://ml.example.com`, username `immich`, and a password sends the standard header:
+
+```http
+Authorization: Basic <base64(username:password)>
+```
+
+Use HTTPS whenever credentials cross an untrusted network. The machine learning service does not need to implement authentication itself; a reverse proxy in front of it can enforce Basic authentication.
+
 ## Forcing remote processing
 
 Adding a new URL to the settings is recommended over replacing the existing URL (http://immich-machine-learning:3003). This is because it will allow machine learning tasks to be processed successfully when the remote server is down by falling back to the local machine learning container. If you do not want machine learning tasks to be processed locally when the remote server is not available, you can instead replace the existing URL and only provide the remote container's URL. If doing this, you can remove the `immich-machine-learning` section of the local `docker-compose.yml` file to save resources, as this service will never be used.

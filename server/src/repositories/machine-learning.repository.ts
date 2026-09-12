@@ -74,6 +74,18 @@ export interface Face {
 export type FacialRecognitionResponse = { [ModelTask.FACIAL_RECOGNITION]: Face[] } & VisualResponse;
 export type MachineLearningRequest = ClipVisualRequest | ClipTextualRequest | FacialRecognitionRequest | OcrRequest;
 export type TextEncodingOptions = ModelOptions & { language?: string };
+type MachineLearningEndpoint = MachineLearningConfig['urls'][number];
+
+const getEndpointUrl = (endpoint: MachineLearningEndpoint) => (typeof endpoint === 'string' ? endpoint : endpoint.url);
+
+const getEndpointHeaders = (endpoint: MachineLearningEndpoint) => {
+  if (typeof endpoint === 'string' || !endpoint.auth) {
+    return undefined;
+  }
+
+  const credentials = Buffer.from(`${endpoint.auth.username}:${endpoint.auth.password}`).toString('base64');
+  return { Authorization: `Basic ${credentials}` };
+};
 
 @Injectable()
 export class MachineLearningRepository {
@@ -99,7 +111,7 @@ export class MachineLearningRepository {
 
     // delete old servers
     for (const url of Object.keys(this.healthyMap)) {
-      if (!config.urls.includes(url)) {
+      if (!config.urls.some((endpoint) => getEndpointUrl(endpoint) === url)) {
         delete this.healthyMap[url];
       }
     }
@@ -122,15 +134,17 @@ export class MachineLearningRepository {
   }
 
   private tick() {
-    for (const url of this.config.urls) {
-      void this.check(url);
+    for (const endpoint of this.config.urls) {
+      void this.check(endpoint);
     }
   }
 
-  private async check(url: string) {
+  private async check(endpoint: MachineLearningEndpoint) {
+    const url = getEndpointUrl(endpoint);
     let isHealthy = false;
     try {
       const response = await fetch(new URL('ping', url), {
+        headers: getEndpointHeaders(endpoint),
         signal: AbortSignal.timeout(this.config.availabilityChecks.timeout),
       });
       if (response.ok) {
@@ -162,13 +176,18 @@ export class MachineLearningRepository {
   private async predict<T>(payload: ModelPayload, config: MachineLearningRequest): Promise<T> {
     const formData = await this.getFormData(payload, config);
 
-    for (const url of [
+    for (const endpoint of [
       // try healthy servers first
-      ...this.config.urls.filter((url) => this.isHealthy(url)),
-      ...this.config.urls.filter((url) => !this.isHealthy(url)),
+      ...this.config.urls.filter((endpoint) => this.isHealthy(getEndpointUrl(endpoint))),
+      ...this.config.urls.filter((endpoint) => !this.isHealthy(getEndpointUrl(endpoint))),
     ]) {
+      const url = getEndpointUrl(endpoint);
       try {
-        const response = await fetch(new URL('predict', url), { method: 'POST', body: formData });
+        const response = await fetch(new URL('predict', url), {
+          method: 'POST',
+          body: formData,
+          headers: getEndpointHeaders(endpoint),
+        });
         if (response.ok) {
           this.setHealthy(url, true);
           return response.json();
@@ -177,8 +196,8 @@ export class MachineLearningRepository {
         this.logger.warn(
           `Machine learning request to "${url}" failed with status ${response.status}: ${response.statusText}`,
         );
-      } catch (error: Error | unknown) {
-        this.logger.warn(`Machine learning request to "${url}" failed`, error);
+      } catch {
+        this.logger.warn(`Machine learning request to "${url}" failed`);
       }
 
       this.setHealthy(url, false);
