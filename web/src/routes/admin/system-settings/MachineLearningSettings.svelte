@@ -33,27 +33,73 @@
         <hr />
 
         <div>
-          {#each configToEdit.machineLearning.urls as _, i (i)}
-            <SettingInputField
-              inputType={SettingInputFieldType.TEXT}
-              label={i === 0 ? $t('url') : undefined}
-              description={i === 0 ? $t('admin.machine_learning_url_description') : undefined}
-              bind:value={configToEdit.machineLearning.urls[i]}
-              required={i === 0}
-              disabled={disabled || !configToEdit.machineLearning.enabled}
-              isEdited={i === 0 && !isEqual(configToEdit.machineLearning.urls, config.machineLearning.urls)}
-            >
-              {#snippet trailingSnippet()}
-                {#if configToEdit.machineLearning.urls.length > 1}
+          {#each configToEdit.machineLearning.urls as endpoint, i (i)}
+            <div class="mb-4 rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+              {#if typeof endpoint === 'string'}
+                <SettingInputField
+                  inputType={SettingInputFieldType.TEXT}
+                  label={i === 0 ? $t('url') : undefined}
+                  description={i === 0 ? $t('admin.machine_learning_url_description') : undefined}
+                  bind:value={configToEdit.machineLearning.urls[i]}
+                  required={i === 0}
+                  disabled={disabled || !configToEdit.machineLearning.enabled}
+                  isEdited={i === 0 && !isEqual(configToEdit.machineLearning.urls, config.machineLearning.urls)}
+                />
+              {:else}
+                <SettingInputField
+                  inputType={SettingInputFieldType.TEXT}
+                  label={i === 0 ? $t('url') : undefined}
+                  description={i === 0 ? $t('admin.machine_learning_url_description') : undefined}
+                  bind:value={endpoint.url}
+                  required={i === 0}
+                  disabled={disabled || !configToEdit.machineLearning.enabled}
+                  isEdited={i === 0 && !isEqual(configToEdit.machineLearning.urls, config.machineLearning.urls)}
+                />
+              {/if}
+
+              <SettingSelect
+                label={$t('authentication')}
+                name="machine-learning-auth-{i}"
+                value={typeof endpoint === 'string' || !endpoint.auth ? 'none' : 'basic'}
+                options={[
+                  { value: 'none', text: $t('none') },
+                  { value: 'basic', text: $t('basic') },
+                ]}
+                disabled={disabled || !configToEdit.machineLearning.enabled}
+                onSelect={(authentication) => {
+                  const url = typeof endpoint === 'string' ? endpoint : endpoint.url;
+                  configToEdit.machineLearning.urls[i] =
+                    authentication === 'basic' ? { url, auth: { username: '', password: '' } } : { url };
+                }}
+              />
+
+              {#if typeof endpoint !== 'string' && endpoint.auth}
+                <div class="grid gap-4 md:grid-cols-2">
+                  <SettingInputField
+                    inputType={SettingInputFieldType.TEXT}
+                    label={$t('username')}
+                    bind:value={endpoint.auth.username}
+                    disabled={disabled || !configToEdit.machineLearning.enabled}
+                  />
+                  <SettingInputField
+                    inputType={SettingInputFieldType.PASSWORD}
+                    label={$t('password')}
+                    bind:value={endpoint.auth.password}
+                    disabled={disabled || !configToEdit.machineLearning.enabled}
+                  />
+                </div>
+              {/if}
+              {#if configToEdit.machineLearning.urls.length > 1}
+                <div class="flex justify-end">
                   <IconButton
-                    aria-label=""
+                    aria-label={$t('delete')}
                     onclick={() => configToEdit.machineLearning.urls.splice(i, 1)}
                     icon={mdiTrashCanOutline}
                     color="danger"
                   />
-                {/if}
-              {/snippet}
-            </SettingInputField>
+                </div>
+              {/if}
+            </div>
           {/each}
         </div>
 
